@@ -8,16 +8,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <style>
   :root {
     --bg: #e9edf3; --surface: #ffffff; --ink: #1b2236; --muted: #5b6479;
-    --line: #cfd6e2; --focus: #2d5bd8; --warn-bg: #fff4d6; --warn-ink: #6b4b00; --err: #b3261e;
+    --line: #cfd6e2; --focus: #2d5bd8; --warn-bg: #fff4d6; --warn-ink: #6b4b00;
+    --ok-bg: #e3f4ea; --ok-ink: #1d5a37; --err: #b3261e;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #141a28; --surface: #1e2638; --ink: #eef1f7; --muted: #9aa3b8;
-      --line: #313b52; --focus: #8fb0ff; --warn-bg: #3a3118; --warn-ink: #f3d98b; --err: #ff8a80;
+      --line: #313b52; --focus: #8fb0ff; --warn-bg: #3a3118; --warn-ink: #f3d98b;
+      --ok-bg: #173526; --ok-ink: #9fe0b8; --err: #ff8a80;
       color-scheme: dark;
     }
   }
@@ -26,14 +29,14 @@
   body {
     margin: 0; min-height: 100%; background: var(--bg); color: var(--ink);
     font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    padding: max(24px, env(safe-area-inset-top)) 20px max(32px, env(safe-area-inset-bottom));
+    padding: max(24px, env(safe-area-inset-top)) 20px calc(90px + env(safe-area-inset-bottom, 0px));
   }
   main { max-width: 880px; margin: 0 auto; }
   header { margin: 12px 0 28px; }
   h1 {
     font-size: clamp(2.4rem, 7vw, 4.2rem); font-weight: 800; line-height: .95;
     letter-spacing: -0.035em; margin: 0 0 10px; user-select: none; -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
+    -webkit-tap-highlight-color: transparent; outline: none;
   }
   header p { margin: 0; color: var(--muted); font-size: 1.05rem; }
   h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin: 40px 0 14px; }
@@ -51,13 +54,23 @@
   .app .name { font-size: 1.35rem; font-weight: 600; line-height: 1.15; max-width: 85%; }
   .app .addr { font-size: .82rem; opacity: .85; word-break: break-all; }
   .app.secret { outline: 2px dashed rgba(255,255,255,.55); outline-offset: -7px; }
-  .acts { position: absolute; top: 10px; right: 10px; display: none; gap: 6px; }
-  .editing .acts { display: flex; }
-  .acts button {
+  .editing .app { cursor: grab; transform: none; }
+  .editing .app .name { margin-top: 30px; }
+  .app.ghost { opacity: .35; }
+  .app.chosen { box-shadow: 0 10px 28px rgba(0,0,0,.3); }
+  .acts, .move { position: absolute; display: none; gap: 6px; }
+  .acts { top: 10px; right: 10px; }
+  .move { bottom: 10px; right: 10px; }
+  .editing .acts, .editing .move { display: flex; }
+  .acts button, .move button {
     font: inherit; font-size: .8rem; font-weight: 600; border: 0; border-radius: 999px;
     padding: 6px 10px; background: rgba(0,0,0,.42); color: #fff; cursor: pointer;
   }
-  .acts button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .move button { width: 34px; padding: 6px 0; font-size: .95rem; }
+  .move button:disabled { opacity: .35; cursor: default; }
+  .acts button:focus-visible, .move button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .edit-hint { display: none; color: var(--muted); font-size: .92rem; margin: 10px 0 0; }
+  .edit-hint.show { display: block; }
 
   .tools { display: flex; gap: 10px; flex-wrap: wrap; margin: 22px 0 12px; }
   button.btn {
@@ -74,21 +87,32 @@
   .panel.open { display: grid; }
   .panel.row { grid-template-columns: 1fr 1.6fr auto; align-items: end; }
   .panel h3 { margin: 0; font-size: 1.1rem; grid-column: 1 / -1; }
+  .panel ol { margin: 0; padding-left: 20px; color: var(--muted); font-size: .92rem; line-height: 1.5; }
   label { display: block; font-size: .88rem; color: var(--muted); margin-bottom: 5px; }
   input, textarea {
     width: 100%; font: inherit; font-size: 1rem; padding: 10px 12px; border-radius: 10px;
     border: 1.5px solid var(--line); background: var(--bg); color: var(--ink);
   }
   textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem; min-height: 140px; }
-  .msg { grid-column: 1 / -1; margin: 0; font-size: .9rem; color: var(--err); min-height: 1em; }
+  .msg { grid-column: 1 / -1; margin: 0; font-size: .9rem; color: var(--err); }
   .msg:empty { display: none; }
   .hint { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: .9rem; }
+  .row-btns { display: flex; gap: 10px; flex-wrap: wrap; }
   .banner {
     display: none; background: var(--warn-bg); color: var(--warn-ink); border-radius: 14px;
     padding: 12px 14px; margin: 22px 0 0; font-size: .95rem; gap: 10px; align-items: center; flex-wrap: wrap;
   }
+  .banner.ok { background: var(--ok-bg); color: var(--ok-ink); }
   .banner.show { display: flex; }
   .banner span { flex: 1 1 260px; }
+  .banner button[hidden] { display: none; }
+  .relock {
+    position: fixed; z-index: 20; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    font: inherit; font-size: 1rem; font-weight: 600; cursor: pointer; padding: 12px 18px;
+    border-radius: 999px; border: 0; background: var(--ink); color: var(--bg); box-shadow: 0 6px 18px rgba(0,0,0,.25);
+  }
+  .relock[hidden] { display: none; }
+  .relock:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
   @media (max-width: 620px) { .panel.row { grid-template-columns: 1fr; } }
   @media (prefers-reduced-motion: reduce) { .app { transition: none; } .app:hover { transform: none; } }
 </style>
@@ -96,11 +120,12 @@
 <body>
 <main>
   <header>
-    <h1 id="title">My apps</h1>
+    <h1 id="title" tabindex="-1">My apps</h1>
     <p>Everything I’ve built, one tap away.</p>
   </header>
 
   <section class="grid" id="grid" aria-label="Apps"></section>
+  <p class="edit-hint" id="editHint">Drag a tile to move it, or use the ◀ ▶ arrows. Tap Done when you’re finished.</p>
 
   <div class="tools">
     <button class="btn primary" id="addBtn" type="button">Add a link</button>
@@ -111,17 +136,18 @@
     <h3 id="addTitle">Add a link</h3>
     <div><label for="name">Name</label><input id="name" placeholder="Homework tracker" required></div>
     <div><label for="url">Address</label><input id="url" placeholder="https://arnajit.github.io/…" required></div>
-    <button class="btn primary" type="submit" id="addSubmit">Save link</button>
+    <button class="btn primary" type="submit">Save link</button>
     <p class="msg" id="addMsg" role="alert"></p>
   </form>
 
   <!-- Code panel: opens when the title is tapped 3 times -->
-  <form class="panel" id="codeForm" autocomplete="off">
+  <form class="panel" id="codeForm">
+    <input type="text" name="username" value="My apps hub" autocomplete="username" hidden readonly>
     <h3 id="codeTitle">Enter code</h3>
-    <div><label for="code1" id="code1Label">Code</label><input id="code1" type="password" inputmode="text" required></div>
-    <div id="code2Wrap"><label for="code2">Type the code again</label><input id="code2" type="password"></div>
+    <div><label for="code1" id="code1Label">Code</label><input id="code1" name="password" type="password" autocomplete="current-password" required></div>
+    <div id="code2Wrap"><label for="code2">Type the code again</label><input id="code2" type="password" autocomplete="new-password"></div>
     <p class="hint" id="codeHint"></p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="row-btns">
       <button class="btn primary" type="submit" id="codeSubmit">Unlock</button>
       <button class="btn" type="button" id="codeCancel">Cancel</button>
     </div>
@@ -134,12 +160,32 @@
     <div class="tools">
       <button class="btn primary" id="addHiddenBtn" type="button">Add a hidden link</button>
       <button class="btn" id="changeCodeBtn" type="button">Change code</button>
+      <button class="btn" id="syncBtn" type="button">Sync all devices</button>
       <button class="btn" id="lockBtn" type="button">Lock</button>
     </div>
+
+    <form class="panel" id="syncForm" autocomplete="off">
+      <h3>Sync all devices</h3>
+      <p class="hint">Once this is set up, every change you make (apps, order, hidden apps and your code) is saved to GitHub automatically, so all your devices show the same thing. You only do this once, on one device.</p>
+      <ol>
+        <li>On GitHub, open Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.</li>
+        <li>Under Repository access, choose “Only select repositories” and pick <b>arnajit.github.io</b>.</li>
+        <li>Under Permissions → Repository permissions, set <b>Contents</b> to “Read and write”.</li>
+        <li>Generate the token, copy it, and paste it below.</li>
+      </ol>
+      <div><label for="token">GitHub token</label><input id="token" type="password" placeholder="github_pat_…" autocomplete="off"></div>
+      <p class="hint">The token is locked inside your hidden section with your code, so it only works after unlocking. Use a code of 8 or more characters to keep it safe.</p>
+      <div class="row-btns">
+        <button class="btn primary" type="submit">Connect and sync</button>
+        <button class="btn" type="button" id="syncCancel">Cancel</button>
+        <button class="btn" type="button" id="syncOff" hidden>Turn off sync</button>
+      </div>
+      <p class="msg" id="syncMsg" role="alert"></p>
+    </form>
   </section>
 
   <div class="banner" id="banner" role="status">
-    <span>Your changes are saved in this browser only. Download the updated page and upload it to GitHub to keep them on every device.</span>
+    <span id="bannerText"></span>
     <button class="btn primary" id="downloadBtn" type="button">Download updated page</button>
   </div>
 
@@ -150,100 +196,131 @@
   </div>
 </main>
 
+<button class="relock" id="relockBtn" type="button" hidden>🔒 Relock</button>
+
 <script>
 // @@DATA-START
 const LINKS = [
-  { "name": "Tuition", "url": "https://arnajit.github.io/tuition/#", "color": "#2f6b55" },
-  { "name": "Music Studio", "url": "https://arnajit.github.io/music-studio/#student-smwqw56zl", "color": "#7a2f63" },
-  { "name": "Ledger Log", "url": "https://arnajit.github.io/ledger-log/", "color": "#24527a" },
-  { "name": "IITM Quiz Practice", "url": "https://arnajit.github.io/iitm-quiz-practice/", "color": "#9a6a12" }
+  {"name":"Tuition","url":"https://arnajit.github.io/tuition/#","color":"#2f6b55"},
+  {"name":"Music Studio","url":"https://arnajit.github.io/music-studio/#student-smwqw56zl","color":"#7a2f63"},
+  {"name":"Ledger Log","url":"https://arnajit.github.io/ledger-log/","color":"#24527a"},
+  {"name":"IITM Quiz Practice","url":"https://arnajit.github.io/iitm-quiz-practice/","color":"#9a6a12"}
 ];
 const VAULT = "";
 // @@DATA-END
 
-/* Hidden links are stored in VAULT, encrypted with your code (AES-GCM, key from PBKDF2).
-   Without the code, nobody can read them, even by viewing this file’s source.
-   If you forget the code, the hidden links cannot be recovered. */
+/* The GitHub repository this page lives in (used by “Sync all devices”). */
+const GH = { owner: "arnajit", repo: "arnajit.github.io", path: "index.html" };
+
+/* Hidden links (and the sync token) are stored in VAULT, encrypted with your code
+   (AES-GCM with a key from PBKDF2). Without the code nobody can read them, even in
+   the page source. If you forget the code, the hidden links cannot be recovered. */
 
 const COLORS = ["#3d4f9e", "#a2432f", "#1f6f78", "#5c4a9c", "#6b6b1f", "#8a3b4b", "#2f6b55", "#7a2f63"];
-const KEY = "my-apps-state-v2";
+const KEY = "my-apps-state-v3";
 const enc = new TextEncoder(), dec = new TextDecoder();
 const $ = id => document.getElementById(id);
 
 const fileStamp = JSON.stringify({ LINKS, VAULT });
-let visible = LINKS.slice(), vault = VAULT;
-let unlocked = false, hidden = [], code = null, editing = false;
-let addMode = "visible", codeMode = "unlock";
+let visible = LINKS.slice(), vault = VAULT, synced = null;
+let unlocked = false, hidden = [], token = "", code = null, editing = false;
+let addMode = "visible", codeMode = "unlock", sortables = [], syncTimer = null, syncing = false, syncNote = "";
 
 // ---------- storage ----------
 try {
-  const saved = JSON.parse(localStorage.getItem(KEY));
-  if (saved && saved.stamp === fileStamp) { visible = saved.visible; vault = saved.vault; }
+  const saved = JSON.parse(localStorage.getItem(KEY)) || JSON.parse(localStorage.getItem("my-apps-state-v2"));
+  if (saved && saved.stamp === fileStamp) { visible = saved.visible; vault = saved.vault; synced = saved.synced || null; }
   else localStorage.removeItem(KEY);
 } catch (e) {}
+const current = () => JSON.stringify({ LINKS: visible, VAULT: vault });
 function persist() {
-  try { localStorage.setItem(KEY, JSON.stringify({ stamp: fileStamp, visible, vault })); } catch (e) {}
-  $("banner").classList.toggle("show", JSON.stringify({ LINKS: visible, VAULT: vault }) !== fileStamp);
+  try { localStorage.setItem(KEY, JSON.stringify({ stamp: fileStamp, visible, vault, synced })); } catch (e) {}
+  updateBanner();
+}
+function changed() { persist(); if (unlocked && token) scheduleSync(); }
+function updateBanner() {
+  const pending = current() !== fileStamp && current() !== synced;
+  const b = $("banner");
+  if (syncNote) { b.className = "banner show" + (syncNote.ok ? " ok" : ""); $("bannerText").textContent = syncNote.text; $("downloadBtn").hidden = !!syncNote.ok; return; }
+  if (!pending) { b.className = "banner"; return; }
+  b.className = "banner show"; $("downloadBtn").hidden = false;
+  $("bannerText").textContent = unlocked && token
+    ? "Saving your changes to all devices…"
+    : "Your changes are saved in this browser only. Unlock the hidden section to sync them (if sync is on), or download the updated page and upload it to GitHub.";
 }
 
 // ---------- crypto ----------
-const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b64 = buf => { const u = new Uint8Array(buf); let s = ""; for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode(...u.subarray(i, i + 8192)); return btoa(s); };
 const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 async function keyFrom(pass, salt) {
   const base = await crypto.subtle.importKey("raw", enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" },
     base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
-async function lockUp(list, pass) {
+async function lockUp(data, pass) {
   const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
-  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await keyFrom(pass, salt), enc.encode(JSON.stringify(list)));
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await keyFrom(pass, salt), enc.encode(JSON.stringify(data)));
   return b64(salt) + "." + b64(iv) + "." + b64(ct);
 }
 async function openUp(str, pass) {
   const [s, i, c] = str.split(".").map(unb64);
   const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: i }, await keyFrom(pass, s), c);
-  return JSON.parse(dec.decode(pt));
+  const data = JSON.parse(dec.decode(pt));
+  return Array.isArray(data) ? { links: data, token: "" } : data;   // older format held only links
 }
-async function saveHidden() { vault = await lockUp(hidden, code); persist(); }
+async function saveHidden() { vault = await lockUp({ links: hidden, token }, code); changed(); }
+async function afterChange(list) { if (list === hidden) await saveHidden(); else changed(); render(); }
 
 // ---------- rendering ----------
 function shortAddr(u) { try { const x = new URL(u); return (x.host + x.pathname).replace(/\/$/, ""); } catch (e) { return u; } }
-function tile(link, actions, secret) {
-  const a = document.createElement("a");
+function button(parent, text, label, fn, disabled) {
+  const b = document.createElement("button");
+  b.type = "button"; b.textContent = text; b.setAttribute("aria-label", label); b.disabled = !!disabled;
+  b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); fn(); });
+  parent.appendChild(b);
+}
+function tile(list, i, secret) {
+  const link = list[i], a = document.createElement("a");
   a.className = "app" + (secret ? " secret" : "");
   a.href = link.url; a.target = "_blank"; a.rel = "noopener";
   a.style.setProperty("--c", link.color || COLORS[0]);
-  a.innerHTML = '<span class="letter" aria-hidden="true"></span><span class="name"></span><span class="addr"></span><span class="acts"></span>';
+  a.innerHTML = '<span class="letter" aria-hidden="true"></span><span class="name"></span><span class="addr"></span><span class="acts"></span><span class="move"></span>';
   a.querySelector(".letter").textContent = link.name.trim().charAt(0).toUpperCase();
   a.querySelector(".name").textContent = link.name;
   a.querySelector(".addr").textContent = shortAddr(link.url);
-  actions.forEach(([text, fn]) => {
-    const b = document.createElement("button");
-    b.type = "button"; b.textContent = text; b.setAttribute("aria-label", text + " " + link.name);
-    b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); fn(); });
-    a.querySelector(".acts").appendChild(b);
-  });
+  a.addEventListener("click", e => { if (editing) e.preventDefault(); });
+  const acts = a.querySelector(".acts"), move = a.querySelector(".move");
+  if (secret) button(acts, "Show", "Show " + link.name + " in main apps", async () => { visible.push(hidden.splice(i, 1)[0]); await saveHidden(); render(); });
+  else if (unlocked) button(acts, "Hide", "Hide " + link.name, async () => { hidden.push(visible.splice(i, 1)[0]); await saveHidden(); render(); });
+  button(acts, "Remove", "Remove " + link.name, async () => { if (confirm("Remove " + link.name + "?")) { list.splice(i, 1); await afterChange(list); } });
+  button(move, "◀", "Move " + link.name + " earlier", () => moveItem(list, i, i - 1), i === 0);
+  button(move, "▶", "Move " + link.name + " later", () => moveItem(list, i, i + 1), i === list.length - 1);
   return a;
 }
+async function moveItem(list, from, to) {
+  if (to < 0 || to >= list.length || from === to) return;
+  list.splice(to, 0, list.splice(from, 1)[0]); await afterChange(list);
+}
+function fill(grid, list, secret, emptyText) {
+  grid.innerHTML = ""; grid.classList.toggle("editing", editing);
+  if (!list.length) { grid.innerHTML = '<p class="empty"></p>'; grid.firstChild.textContent = emptyText; return; }
+  list.forEach((_, i) => grid.appendChild(tile(list, i, secret)));
+  if (editing && window.Sortable) sortables.push(Sortable.create(grid, {
+    animation: 150, delay: 180, delayOnTouchOnly: true, ghostClass: "ghost", chosenClass: "chosen",
+    filter: "button", preventOnFilter: false,
+    onEnd: e => { if (e.oldIndex !== e.newIndex) moveItem(list, e.oldIndex, e.newIndex); }
+  }));
+}
 function render() {
-  const g = $("grid"); g.innerHTML = ""; g.classList.toggle("editing", editing);
-  if (!visible.length) g.innerHTML = '<p class="empty">No apps here yet. Use “Add a link” to add one.</p>';
-  visible.forEach((l, i) => {
-    const acts = [];
-    if (unlocked) acts.push(["Hide", async () => { hidden.push(visible.splice(i, 1)[0]); await saveHidden(); render(); }]);
-    acts.push(["Remove", () => { if (confirm("Remove " + l.name + "?")) { visible.splice(i, 1); persist(); render(); } }]);
-    g.appendChild(tile(l, acts, false));
-  });
+  sortables.forEach(s => s.destroy()); sortables = [];
+  fill($("grid"), visible, false, "No apps here yet. Use “Add a link” to add one.");
   $("hiddenArea").hidden = !unlocked;
-  const h = $("hiddenGrid"); h.innerHTML = ""; h.classList.toggle("editing", editing);
-  if (unlocked) {
-    if (!hidden.length) h.innerHTML = '<p class="empty">No hidden apps yet. Add one below, or tap Edit and choose “Hide” on any app above.</p>';
-    hidden.forEach((l, i) => h.appendChild(tile(l, [
-      ["Show", async () => { visible.push(hidden.splice(i, 1)[0]); await saveHidden(); render(); }],
-      ["Remove", async () => { if (confirm("Remove " + l.name + "?")) { hidden.splice(i, 1); await saveHidden(); render(); } }]
-    ], true)));
-  }
+  if (unlocked) fill($("hiddenGrid"), hidden, true, "No hidden apps yet. Add one below, or tap Edit and choose “Hide” on any app above.");
   $("editBtn").textContent = editing ? "Done" : "Edit";
+  $("editHint").classList.toggle("show", editing);
+  $("relockBtn").hidden = !unlocked;
+  $("syncBtn").textContent = token ? "Sync is on" : "Sync all devices";
+  updateBanner();
 }
 
 // ---------- add link ----------
@@ -253,7 +330,7 @@ function openAdd(mode) {
   f.dataset.mode = mode; f.classList.toggle("open", !same);
   $("addTitle").textContent = mode === "hidden" ? "Add a hidden link" : "Add a link";
   $("addMsg").textContent = "";
-  if (!same) { (mode === "hidden" ? $("hiddenArea") : $("grid")).after(f); $("name").focus(); }
+  if (!same) { (mode === "hidden" ? $("hiddenGrid").nextElementSibling : $("editHint").nextElementSibling).after(f); $("name").focus(); }
 }
 $("addBtn").onclick = () => openAdd("visible");
 $("addHiddenBtn").onclick = () => openAdd("hidden");
@@ -262,10 +339,9 @@ $("addForm").addEventListener("submit", async e => {
   const name = $("name").value.trim(); let url = $("url").value.trim();
   if (!/^https?:\/\//i.test(url)) url = "https://" + url;
   try { new URL(url); } catch (err) { $("addMsg").textContent = "That address isn’t a valid web link. Check it and try again."; return; }
-  const n = visible.length + hidden.length;
-  const link = { name, url, color: COLORS[n % COLORS.length] };
-  if (addMode === "hidden") { hidden.push(link); await saveHidden(); } else { visible.push(link); persist(); }
-  e.target.reset(); e.target.classList.remove("open"); render();
+  const link = { name, url, color: COLORS[(visible.length + hidden.length) % COLORS.length] };
+  const list = addMode === "hidden" ? hidden : visible; list.push(link);
+  e.target.reset(); e.target.classList.remove("open"); await afterChange(list);
 });
 $("editBtn").onclick = () => { editing = !editing; render(); };
 
@@ -273,17 +349,18 @@ $("editBtn").onclick = () => { editing = !editing; render(); };
 let taps = [];
 $("title").addEventListener("click", () => {
   const now = Date.now(); taps = taps.filter(t => now - t < 1200); taps.push(now);
-  if (taps.length >= 3) { taps = []; if (unlocked) return; openCode(vault ? "unlock" : "create"); }
+  if (taps.length >= 3) { taps = []; if (!unlocked) openCode(vault ? "unlock" : "create"); }
 });
 function openCode(mode) {
   codeMode = mode;
   const f = $("codeForm"); f.reset(); f.classList.add("open"); $("codeMsg").textContent = "";
   const create = mode !== "unlock";
   $("code2Wrap").style.display = create ? "" : "none"; $("code2").required = create;
+  $("code1").autocomplete = create ? "new-password" : "current-password";
   $("codeTitle").textContent = mode === "unlock" ? "Enter code" : mode === "create" ? "Choose a code" : "Choose a new code";
   $("code1Label").textContent = create ? "New code" : "Code";
   $("codeSubmit").textContent = mode === "unlock" ? "Unlock" : "Save code";
-  $("codeHint").textContent = create ? "Use at least 4 characters. Write it down somewhere safe: if you forget it, hidden links can’t be recovered." : "";
+  $("codeHint").textContent = create ? "Use at least 6 characters (8 or more if you turn on sync). Save it in your browser’s password manager when asked: if you forget it, hidden links can’t be recovered." : "";
   (mode === "change" ? $("hiddenArea") : $("grid")).after(f);
   $("code1").focus();
 }
@@ -292,35 +369,106 @@ $("codeForm").addEventListener("submit", async e => {
   e.preventDefault();
   const c1 = $("code1").value, c2 = $("code2").value;
   if (codeMode === "unlock") {
-    try { hidden = await openUp(vault, c1); code = c1; unlocked = true; }
+    try { const d = await openUp(vault, c1); hidden = d.links || []; token = d.token || ""; code = c1; unlocked = true; }
     catch (err) { $("codeMsg").textContent = "That code didn’t work. Try again."; $("code1").select(); return; }
-  } else {
-    if (c1.length < 4) { $("codeMsg").textContent = "The code needs at least 4 characters."; return; }
-    if (c1 !== c2) { $("codeMsg").textContent = "The two codes don’t match. Type them again."; return; }
-    code = c1; if (codeMode === "create") hidden = []; unlocked = true; await saveHidden();
+    $("codeForm").classList.remove("open"); render();
+    if (token && current() !== fileStamp && current() !== synced) scheduleSync(0);
+    return;
   }
-  $("codeForm").classList.remove("open"); render();
+  if (c1.length < 6) { $("codeMsg").textContent = "The code needs at least 6 characters."; return; }
+  if (c1 !== c2) { $("codeMsg").textContent = "The two codes don’t match. Type them again."; return; }
+  code = c1; if (codeMode === "create") { hidden = []; token = ""; } unlocked = true;
+  $("codeForm").classList.remove("open"); await saveHidden(); render();
+  if (codeMode === "change" && token) syncNote = { ok: false, text: "Code changed. Saving to all devices… Use the new code on every device from now on." };
 });
 $("changeCodeBtn").onclick = () => openCode("change");
-$("lockBtn").onclick = () => { unlocked = false; hidden = []; code = null; editing = false; $("addForm").classList.remove("open"); render(); };
 
-// ---------- download updated page ----------
+// ---------- relock ----------
+function relock() {
+  unlocked = false; hidden = []; token = ""; code = null; editing = false; syncNote = "";
+  ["addForm", "codeForm", "syncForm"].forEach(id => $(id).classList.remove("open"));
+  render(); window.scrollTo({ top: 0, behavior: "smooth" }); $("title").focus({ preventScroll: true });
+}
+$("lockBtn").onclick = relock;
+$("relockBtn").onclick = relock;
+document.addEventListener("keydown", e => { if (e.key === "Escape" && unlocked) relock(); });
+
+// ---------- build the page file with the current data ----------
 function dataBlock() {
   const lines = visible.map(l => "  " + JSON.stringify({ name: l.name, url: l.url, color: l.color })).join(",\n");
   return "// @@DATA-START\nconst LINKS = [\n" + lines + "\n];\nconst VAULT = " + JSON.stringify(vault) + ";\n// @@DATA-END";
 }
+function withData(src) {
+  const a = src.indexOf("// @@DATA-START"), b = src.indexOf("// @@DATA-END");
+  if (a < 0 || b < 0) return null;
+  return src.slice(0, a) + dataBlock() + src.slice(b + "// @@DATA-END".length);
+}
 $("downloadBtn").onclick = async () => {
   let src = null;
   try { const r = await fetch(location.href.split("#")[0], { cache: "no-store" }); if (r.ok) src = await r.text(); } catch (e) {}
-  const a = src ? src.indexOf("// @@DATA-START") : -1, b = src ? src.indexOf("// @@DATA-END") : -1;
-  if (a < 0 || b < 0) {
-    $("copyText").value = dataBlock(); $("copyPanel").classList.add("open"); $("copyText").select(); return;
-  }
-  const out = src.slice(0, a) + dataBlock() + src.slice(b + "// @@DATA-END".length);
+  const out = src && withData(src);
+  if (!out) { $("copyText").value = dataBlock(); $("copyPanel").classList.add("open"); $("copyText").select(); return; }
   const link = document.createElement("a");
   link.href = URL.createObjectURL(new Blob([out], { type: "text/html" })); link.download = "index.html";
   document.body.appendChild(link); link.click(); link.remove();
 };
+
+// ---------- sync all devices (saves this page to GitHub) ----------
+const api = () => `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+const ghHeaders = t => ({ Authorization: "Bearer " + t, Accept: "application/vnd.github+json" });
+function scheduleSync(ms = 1500) { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); }
+async function pushToGitHub(t) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const g = await fetch(api() + "?t=" + Date.now(), { headers: ghHeaders(t), cache: "no-store" });
+    if (g.status === 401 || g.status === 403) throw new Error("token");
+    if (!g.ok) throw new Error("read " + g.status);
+    const meta = await g.json();
+    const src = dec.decode(unb64(meta.content.replace(/\n/g, "")));
+    const out = withData(src); if (!out) throw new Error("markers");
+    const p = await fetch(api(), { method: "PUT", headers: ghHeaders(t),
+      body: JSON.stringify({ message: "Update apps hub", content: b64(enc.encode(out)), sha: meta.sha }) });
+    if (p.ok) return;
+    if (p.status === 401 || p.status === 403) throw new Error("token");
+    if (p.status !== 409 && p.status !== 422) throw new Error("write " + p.status);
+  }
+  throw new Error("conflict");
+}
+async function syncNow() {
+  if (!unlocked || !token) return;
+  if (syncing) { scheduleSync(); return; }
+  syncing = true; const snapshot = current();
+  syncNote = { ok: false, text: "Saving your changes to all devices…" }; updateBanner();
+  try {
+    await pushToGitHub(token);
+    synced = snapshot; syncNote = { ok: true, text: "Saved to all devices. Other devices show the change after about a minute (reload them)." };
+  } catch (err) {
+    syncNote = { ok: false, text: err.message === "token"
+      ? "GitHub didn’t accept the token. Tap “Sync is on” and connect again with a new token."
+      : "Couldn’t reach GitHub right now. Your changes are safe in this browser and will sync next time you unlock." };
+  }
+  syncing = false; persist();
+  if (syncNote.ok) setTimeout(() => { if (syncNote && syncNote.ok) { syncNote = ""; updateBanner(); } }, 6000);
+}
+$("syncBtn").onclick = () => {
+  const f = $("syncForm"); f.classList.toggle("open"); $("syncMsg").textContent = "";
+  $("syncOff").hidden = !token; if (f.classList.contains("open")) $("token").focus();
+};
+$("syncCancel").onclick = () => $("syncForm").classList.remove("open");
+$("syncOff").onclick = async () => {
+  if (!confirm("Turn off sync? Changes will stay on each device until you download and upload the page.")) return;
+  token = ""; await saveHidden(); $("syncForm").classList.remove("open"); render();
+};
+$("syncForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const t = $("token").value.trim();
+  if (!t) { $("syncMsg").textContent = "Paste your GitHub token first."; return; }
+  $("syncMsg").textContent = "";
+  try { const r = await fetch(api(), { headers: ghHeaders(t), cache: "no-store" });
+        if (!r.ok) throw new Error(r.status); }
+  catch (err) { $("syncMsg").textContent = "GitHub didn’t accept that token for the arnajit.github.io repository. Check the steps above and try again."; return; }
+  token = t; e.target.reset(); e.target.classList.remove("open");
+  vault = await lockUp({ links: hidden, token }, code); persist(); render(); syncNow();
+});
 
 persist(); render();
 </script>
