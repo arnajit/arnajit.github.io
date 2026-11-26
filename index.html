@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arnajit’s apps</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗂️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #e9edf3; --surface: #ffffff; --ink: #1b2236; --muted: #5b6479;
+    --line: #cfd6e2; --focus: #2d5bd8; --warn-bg: #fff4d6; --warn-ink: #6b4b00; --err: #b3261e;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141a28; --surface: #1e2638; --ink: #eef1f7; --muted: #9aa3b8;
+      --line: #313b52; --focus: #8fb0ff; --warn-bg: #3a3118; --warn-ink: #f3d98b; --err: #ff8a80;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { height: 100%; }
+  body {
+    margin: 0; min-height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: max(24px, env(safe-area-inset-top)) 20px max(32px, env(safe-area-inset-bottom));
+  }
+  main { max-width: 880px; margin: 0 auto; }
+  header { margin: 12px 0 28px; }
+  h1 {
+    font-size: clamp(2.4rem, 7vw, 4.2rem); font-weight: 800; line-height: .95;
+    letter-spacing: -0.035em; margin: 0 0 10px; user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  header p { margin: 0; color: var(--muted); font-size: 1.05rem; }
+  h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin: 40px 0 14px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .empty { color: var(--muted); border: 1.5px dashed var(--line); border-radius: 18px; padding: 22px; grid-column: 1 / -1; margin: 0; }
+  .app {
+    position: relative; display: flex; flex-direction: column; justify-content: space-between;
+    min-height: 150px; padding: 18px 18px 16px; border-radius: 18px; background: var(--c);
+    color: #fff; text-decoration: none; overflow: hidden; transition: transform .15s ease;
+  }
+  .app:hover { transform: translateY(-3px); }
+  .app:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .app .letter { position: absolute; right: -6px; bottom: -34px; font-size: 9rem; font-weight: 800; line-height: 1; opacity: .16; pointer-events: none; }
+  .app .name { font-size: 1.35rem; font-weight: 600; line-height: 1.15; max-width: 85%; }
+  .app .addr { font-size: .82rem; opacity: .85; word-break: break-all; }
+  .app.secret { outline: 2px dashed rgba(255,255,255,.55); outline-offset: -7px; }
+  .acts { position: absolute; top: 10px; right: 10px; display: none; gap: 6px; }
+  .editing .acts { display: flex; }
+  .acts button {
+    font: inherit; font-size: .8rem; font-weight: 600; border: 0; border-radius: 999px;
+    padding: 6px 10px; background: rgba(0,0,0,.42); color: #fff; cursor: pointer;
+  }
+  .acts button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+  .tools { display: flex; gap: 10px; flex-wrap: wrap; margin: 22px 0 12px; }
+  button.btn {
+    font: inherit; font-size: .98rem; font-weight: 600; padding: 10px 16px; border-radius: 999px;
+    cursor: pointer; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+  }
+  button.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  button.btn:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  .panel {
+    display: none; background: var(--surface); border: 1.5px solid var(--line);
+    border-radius: 18px; padding: 18px; gap: 12px; margin: 14px 0;
+  }
+  .panel.open { display: grid; }
+  .panel.row { grid-template-columns: 1fr 1.6fr auto; align-items: end; }
+  .panel h3 { margin: 0; font-size: 1.1rem; grid-column: 1 / -1; }
+  label { display: block; font-size: .88rem; color: var(--muted); margin-bottom: 5px; }
+  input, textarea {
+    width: 100%; font: inherit; font-size: 1rem; padding: 10px 12px; border-radius: 10px;
+    border: 1.5px solid var(--line); background: var(--bg); color: var(--ink);
+  }
+  textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem; min-height: 140px; }
+  .msg { grid-column: 1 / -1; margin: 0; font-size: .9rem; color: var(--err); min-height: 1em; }
+  .msg:empty { display: none; }
+  .hint { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: .9rem; }
+  .banner {
+    display: none; background: var(--warn-bg); color: var(--warn-ink); border-radius: 14px;
+    padding: 12px 14px; margin: 22px 0 0; font-size: .95rem; gap: 10px; align-items: center; flex-wrap: wrap;
+  }
+  .banner.show { display: flex; }
+  .banner span { flex: 1 1 260px; }
+  @media (max-width: 620px) { .panel.row { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .app { transition: none; } .app:hover { transform: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="title">My apps</h1>
+    <p>Everything I’ve built, one tap away.</p>
+  </header>
+
+  <section class="grid" id="grid" aria-label="Apps"></section>
+
+  <div class="tools">
+    <button class="btn primary" id="addBtn" type="button">Add a link</button>
+    <button class="btn" id="editBtn" type="button">Edit</button>
+  </div>
+
+  <form class="panel row" id="addForm" autocomplete="off">
+    <h3 id="addTitle">Add a link</h3>
+    <div><label for="name">Name</label><input id="name" placeholder="Homework tracker" required></div>
+    <div><label for="url">Address</label><input id="url" placeholder="https://arnajit.github.io/…" required></div>
+    <button class="btn primary" type="submit" id="addSubmit">Save link</button>
+    <p class="msg" id="addMsg" role="alert"></p>
+  </form>
+
+  <!-- Code panel: opens when the title is tapped 3 times -->
+  <form class="panel" id="codeForm" autocomplete="off">
+    <h3 id="codeTitle">Enter code</h3>
+    <div><label for="code1" id="code1Label">Code</label><input id="code1" type="password" inputmode="text" required></div>
+    <div id="code2Wrap"><label for="code2">Type the code again</label><input id="code2" type="password"></div>
+    <p class="hint" id="codeHint"></p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn primary" type="submit" id="codeSubmit">Unlock</button>
+      <button class="btn" type="button" id="codeCancel">Cancel</button>
+    </div>
+    <p class="msg" id="codeMsg" role="alert"></p>
+  </form>
+
+  <section id="hiddenArea" hidden>
+    <h2>Hidden apps</h2>
+    <div class="grid" id="hiddenGrid" aria-label="Hidden apps"></div>
+    <div class="tools">
+      <button class="btn primary" id="addHiddenBtn" type="button">Add a hidden link</button>
+      <button class="btn" id="changeCodeBtn" type="button">Change code</button>
+      <button class="btn" id="lockBtn" type="button">Lock</button>
+    </div>
+  </section>
+
+  <div class="banner" id="banner" role="status">
+    <span>Your changes are saved in this browser only. Download the updated page and upload it to GitHub to keep them on every device.</span>
+    <button class="btn primary" id="downloadBtn" type="button">Download updated page</button>
+  </div>
+
+  <div class="panel" id="copyPanel">
+    <h3>Copy this into index.html</h3>
+    <p class="hint">The page couldn’t read its own file here. On GitHub, open index.html, replace everything between the two “@@DATA” lines with this text, and commit.</p>
+    <textarea id="copyText" readonly></textarea>
+  </div>
+</main>
+
+<script>
+// @@DATA-START
+const LINKS = [
+  { "name": "Tuition", "url": "https://arnajit.github.io/tuition/#", "color": "#2f6b55" },
+  { "name": "Music Studio", "url": "https://arnajit.github.io/music-studio/#student-smwqw56zl", "color": "#7a2f63" },
+  { "name": "Ledger Log", "url": "https://arnajit.github.io/ledger-log/", "color": "#24527a" },
+  { "name": "IITM Quiz Practice", "url": "https://arnajit.github.io/iitm-quiz-practice/", "color": "#9a6a12" }
+];
+const VAULT = "";
+// @@DATA-END
+
+/* Hidden links are stored in VAULT, encrypted with your code (AES-GCM, key from PBKDF2).
+   Without the code, nobody can read them, even by viewing this file’s source.
+   If you forget the code, the hidden links cannot be recovered. */
+
+const COLORS = ["#3d4f9e", "#a2432f", "#1f6f78", "#5c4a9c", "#6b6b1f", "#8a3b4b", "#2f6b55", "#7a2f63"];
+const KEY = "my-apps-state-v2";
+const enc = new TextEncoder(), dec = new TextDecoder();
+const $ = id => document.getElementById(id);
+
+const fileStamp = JSON.stringify({ LINKS, VAULT });
+let visible = LINKS.slice(), vault = VAULT;
+let unlocked = false, hidden = [], code = null, editing = false;
+let addMode = "visible", codeMode = "unlock";
+
+// ---------- storage ----------
+try {
+  const saved = JSON.parse(localStorage.getItem(KEY));
+  if (saved && saved.stamp === fileStamp) { visible = saved.visible; vault = saved.vault; }
+  else localStorage.removeItem(KEY);
+} catch (e) {}
+function persist() {
+  try { localStorage.setItem(KEY, JSON.stringify({ stamp: fileStamp, visible, vault })); } catch (e) {}
+  $("banner").classList.toggle("show", JSON.stringify({ LINKS: visible, VAULT: vault }) !== fileStamp);
+}
+
+// ---------- crypto ----------
+const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function keyFrom(pass, salt) {
+  const base = await crypto.subtle.importKey("raw", enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function lockUp(list, pass) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await keyFrom(pass, salt), enc.encode(JSON.stringify(list)));
+  return b64(salt) + "." + b64(iv) + "." + b64(ct);
+}
+async function openUp(str, pass) {
+  const [s, i, c] = str.split(".").map(unb64);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: i }, await keyFrom(pass, s), c);
+  return JSON.parse(dec.decode(pt));
+}
+async function saveHidden() { vault = await lockUp(hidden, code); persist(); }
+
+// ---------- rendering ----------
+function shortAddr(u) { try { const x = new URL(u); return (x.host + x.pathname).replace(/\/$/, ""); } catch (e) { return u; } }
+function tile(link, actions, secret) {
+  const a = document.createElement("a");
+  a.className = "app" + (secret ? " secret" : "");
+  a.href = link.url; a.target = "_blank"; a.rel = "noopener";
+  a.style.setProperty("--c", link.color || COLORS[0]);
+  a.innerHTML = '<span class="letter" aria-hidden="true"></span><span class="name"></span><span class="addr"></span><span class="acts"></span>';
+  a.querySelector(".letter").textContent = link.name.trim().charAt(0).toUpperCase();
+  a.querySelector(".name").textContent = link.name;
+  a.querySelector(".addr").textContent = shortAddr(link.url);
+  actions.forEach(([text, fn]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = text; b.setAttribute("aria-label", text + " " + link.name);
+    b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); fn(); });
+    a.querySelector(".acts").appendChild(b);
+  });
+  return a;
+}
+function render() {
+  const g = $("grid"); g.innerHTML = ""; g.classList.toggle("editing", editing);
+  if (!visible.length) g.innerHTML = '<p class="empty">No apps here yet. Use “Add a link” to add one.</p>';
+  visible.forEach((l, i) => {
+    const acts = [];
+    if (unlocked) acts.push(["Hide", async () => { hidden.push(visible.splice(i, 1)[0]); await saveHidden(); render(); }]);
+    acts.push(["Remove", () => { if (confirm("Remove " + l.name + "?")) { visible.splice(i, 1); persist(); render(); } }]);
+    g.appendChild(tile(l, acts, false));
+  });
+  $("hiddenArea").hidden = !unlocked;
+  const h = $("hiddenGrid"); h.innerHTML = ""; h.classList.toggle("editing", editing);
+  if (unlocked) {
+    if (!hidden.length) h.innerHTML = '<p class="empty">No hidden apps yet. Add one below, or tap Edit and choose “Hide” on any app above.</p>';
+    hidden.forEach((l, i) => h.appendChild(tile(l, [
+      ["Show", async () => { visible.push(hidden.splice(i, 1)[0]); await saveHidden(); render(); }],
+      ["Remove", async () => { if (confirm("Remove " + l.name + "?")) { hidden.splice(i, 1); await saveHidden(); render(); } }]
+    ], true)));
+  }
+  $("editBtn").textContent = editing ? "Done" : "Edit";
+}
+
+// ---------- add link ----------
+function openAdd(mode) {
+  addMode = mode; const f = $("addForm");
+  const same = f.classList.contains("open") && f.dataset.mode === mode;
+  f.dataset.mode = mode; f.classList.toggle("open", !same);
+  $("addTitle").textContent = mode === "hidden" ? "Add a hidden link" : "Add a link";
+  $("addMsg").textContent = "";
+  if (!same) { (mode === "hidden" ? $("hiddenArea") : $("grid")).after(f); $("name").focus(); }
+}
+$("addBtn").onclick = () => openAdd("visible");
+$("addHiddenBtn").onclick = () => openAdd("hidden");
+$("addForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = $("name").value.trim(); let url = $("url").value.trim();
+  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+  try { new URL(url); } catch (err) { $("addMsg").textContent = "That address isn’t a valid web link. Check it and try again."; return; }
+  const n = visible.length + hidden.length;
+  const link = { name, url, color: COLORS[n % COLORS.length] };
+  if (addMode === "hidden") { hidden.push(link); await saveHidden(); } else { visible.push(link); persist(); }
+  e.target.reset(); e.target.classList.remove("open"); render();
+});
+$("editBtn").onclick = () => { editing = !editing; render(); };
+
+// ---------- secret unlock: tap the title 3 times ----------
+let taps = [];
+$("title").addEventListener("click", () => {
+  const now = Date.now(); taps = taps.filter(t => now - t < 1200); taps.push(now);
+  if (taps.length >= 3) { taps = []; if (unlocked) return; openCode(vault ? "unlock" : "create"); }
+});
+function openCode(mode) {
+  codeMode = mode;
+  const f = $("codeForm"); f.reset(); f.classList.add("open"); $("codeMsg").textContent = "";
+  const create = mode !== "unlock";
+  $("code2Wrap").style.display = create ? "" : "none"; $("code2").required = create;
+  $("codeTitle").textContent = mode === "unlock" ? "Enter code" : mode === "create" ? "Choose a code" : "Choose a new code";
+  $("code1Label").textContent = create ? "New code" : "Code";
+  $("codeSubmit").textContent = mode === "unlock" ? "Unlock" : "Save code";
+  $("codeHint").textContent = create ? "Use at least 4 characters. Write it down somewhere safe: if you forget it, hidden links can’t be recovered." : "";
+  (mode === "change" ? $("hiddenArea") : $("grid")).after(f);
+  $("code1").focus();
+}
+$("codeCancel").onclick = () => $("codeForm").classList.remove("open");
+$("codeForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const c1 = $("code1").value, c2 = $("code2").value;
+  if (codeMode === "unlock") {
+    try { hidden = await openUp(vault, c1); code = c1; unlocked = true; }
+    catch (err) { $("codeMsg").textContent = "That code didn’t work. Try again."; $("code1").select(); return; }
+  } else {
+    if (c1.length < 4) { $("codeMsg").textContent = "The code needs at least 4 characters."; return; }
+    if (c1 !== c2) { $("codeMsg").textContent = "The two codes don’t match. Type them again."; return; }
+    code = c1; if (codeMode === "create") hidden = []; unlocked = true; await saveHidden();
+  }
+  $("codeForm").classList.remove("open"); render();
+});
+$("changeCodeBtn").onclick = () => openCode("change");
+$("lockBtn").onclick = () => { unlocked = false; hidden = []; code = null; editing = false; $("addForm").classList.remove("open"); render(); };
+
+// ---------- download updated page ----------
+function dataBlock() {
+  const lines = visible.map(l => "  " + JSON.stringify({ name: l.name, url: l.url, color: l.color })).join(",\n");
+  return "// @@DATA-START\nconst LINKS = [\n" + lines + "\n];\nconst VAULT = " + JSON.stringify(vault) + ";\n// @@DATA-END";
+}
+$("downloadBtn").onclick = async () => {
+  let src = null;
+  try { const r = await fetch(location.href.split("#")[0], { cache: "no-store" }); if (r.ok) src = await r.text(); } catch (e) {}
+  const a = src ? src.indexOf("// @@DATA-START") : -1, b = src ? src.indexOf("// @@DATA-END") : -1;
+  if (a < 0 || b < 0) {
+    $("copyText").value = dataBlock(); $("copyPanel").classList.add("open"); $("copyText").select(); return;
+  }
+  const out = src.slice(0, a) + dataBlock() + src.slice(b + "// @@DATA-END".length);
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([out], { type: "text/html" })); link.download = "index.html";
+  document.body.appendChild(link); link.click(); link.remove();
+};
+
+persist(); render();
+</script>
+</body>
+</html>
